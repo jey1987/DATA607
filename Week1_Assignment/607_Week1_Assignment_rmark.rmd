@@ -1,0 +1,69 @@
+---
+title: "607_Week1_Assignment"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Week 1 Assignment {.tabset .tabset-pills}
+### Input CSV
+
+```{r eval=TRUE}
+library(bitops)
+library(plyr)
+library(RCurl)
+
+file_url <- getURL("https://raw.githubusercontent.com/jey1987/DATA607/master/Week1_Assignment/agaricus-lepiota.data")
+mushroom_df <- read.csv(text=file_url,header = FALSE)
+mushroom_df
+```
+
+### Subsetting 5 Columns 
+```{r eval=TRUE}
+
+mushroom_df_subset <- mushroom_df[c(1,2:3,19:20)]
+mushroom_df_subset
+```
+### Change Column Names 
+```{r eval=TRUE}
+names(mushroom_df_subset)[1]='MR_Class'
+names(mushroom_df_subset)[2]='MR_Cap_Shape'
+names(mushroom_df_subset)[3]='MR_Cap_Surface'
+names(mushroom_df_subset)[4]='MR_Ring_Number'
+names(mushroom_df_subset)[5]='MR_Ring_type'
+mushroom_df_subset
+```
+### Modify Abbreviations to meaningful values
+
+```{r eval=TRUE}
+mushroom_df_subset$MR_Class <- revalue(mushroom_df_subset$MR_Class,c("e"="Edible"))
+mushroom_df_subset$MR_Class <- revalue(mushroom_df_subset$MR_Class,c("p"="Poisonous"))
+
+mushroom_df_subset$MR_Cap_Shape <- revalue(mushroom_df_subset$MR_Cap_Shape,c("b"="Bell"))
+mushroom_df_subset$MR_Cap_Shape <- revalue(mushroom_df_subset$MR_Cap_Shape,c("c"="Conical"))
+mushroom_df_subset$MR_Cap_Shape <- revalue(mushroom_df_subset$MR_Cap_Shape,c("x"="Convex"))
+mushroom_df_subset$MR_Cap_Shape <- revalue(mushroom_df_subset$MR_Cap_Shape,c("f"="Flat"))
+mushroom_df_subset$MR_Cap_Shape <- revalue(mushroom_df_subset$MR_Cap_Shape,c("k"="Knobbed"))
+mushroom_df_subset$MR_Cap_Shape <- revalue(mushroom_df_subset$MR_Cap_Shape,c("s"="Sunken"))
+
+mushroom_df_subset$MR_Cap_Surface <- revalue(mushroom_df_subset$MR_Cap_Surface,c("f"="Fibrous"))
+mushroom_df_subset$MR_Cap_Surface <- revalue(mushroom_df_subset$MR_Cap_Surface,c("g"="Grooves"))
+mushroom_df_subset$MR_Cap_Surface <- revalue(mushroom_df_subset$MR_Cap_Surface,c("y"="Scaly"))
+mushroom_df_subset$MR_Cap_Surface <- revalue(mushroom_df_subset$MR_Cap_Surface,c("s"="Smooth"))
+
+mushroom_df_subset$MR_Ring_Number <- revalue(mushroom_df_subset$MR_Ring_Number,c("n"="None"))
+mushroom_df_subset$MR_Ring_Number <- revalue(mushroom_df_subset$MR_Ring_Number,c("o"="One"))
+mushroom_df_subset$MR_Ring_Number <- revalue(mushroom_df_subset$MR_Ring_Number,c("t"="Two"))
+
+mushroom_df_subset$MR_Ring_type <- revalue(mushroom_df_subset$MR_Ring_type,c("c"="Cobwebby"))
+mushroom_df_subset$MR_Ring_type <- revalue(mushroom_df_subset$MR_Ring_type,c("e"="Evanescent"))
+mushroom_df_subset$MR_Ring_type <- revalue(mushroom_df_subset$MR_Ring_type,c("f"="Flaring"))
+mushroom_df_subset$MR_Ring_type <- revalue(mushroom_df_subset$MR_Ring_type,c("l"="Large"))
+mushroom_df_subset$MR_Ring_type <- revalue(mushroom_df_subset$MR_Ring_type,c("n"="None"))
+mushroom_df_subset$MR_Ring_type <- revalue(mushroom_df_subset$MR_Ring_type,c("p"="Pendant"))
+mushroom_df_subset$MR_Ring_type <- revalue(mushroom_df_subset$MR_Ring_type,c("s"="Sheathing"))
+mushroom_df_subset$MR_Ring_type <- revalue(mushroom_df_subset$MR_Ring_type,c("z"="Zone"))
+mushroom_df_subset
+```
