@@ -1,0 +1,87 @@
+---
+title: "607_Week3_Jeyaraman_Ramalingam_Assignment"
+author: "Jeyaraman Ramalingam"
+date: "9/15/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(stringr)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r name, eval=TRUE}
+raw.data <-"555-1239Moe Szyslak(636) 555-0113Burns, C. Montgomery555-6542Rev. Timothy Lovejoy555 8904Ned Flanders636-555-3226Simpson, Homer5553642Dr. Julius Hibbert"
+name <- unlist(str_extract_all(raw.data, "[[:alpha:]., ]{2,}"))
+name
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r standard_Name, eval=TRUE}
+standard_name <- str_replace_all(str_replace_all(name, "[[:alpha:]]{1,}\\.",""),", "," ")
+standard_name
+```
+```{r logic_vector_title, eval=TRUE}
+logic_title <- str_detect(name,"[[:alpha:]]{2,}\\.")
+logic_title
+```
+```{r logic_vector_second_Name, eval=TRUE}
+logic_second_name <- str_detect(str_replace_all(str_replace_all(name, "[[:alpha:]]{2,}\\.",""),", "," "),"[[:alpha:]]{1,}\\.")
+logic_second_name
+```
+
+```{r string_types, eval=TRUE}
+price <- "Item1:4$ Item2:5$"
+logic_price <- str_detect(price,"[0-9]+\\$")
+logic_price
+
+str <- "m 90 f 100 na 10 both 2222 0ppp 22 29b 23232"
+str_val <- str_extract_all(str, "\\b[a-z]{1,4}\\b")
+str_val
+
+file_name <- "ASASDSDSDStxth.py"
+file_val <- unlist(str_extract_all(file_name,".*?\\.txt$"))
+file_val
+
+file_name <- "ASASDSDSDStxth.txt"
+file_val <- unlist(str_extract_all(file_name,".*?\\.txt$"))
+file_val
+
+date_string <- "AAA08/12/1987BBB01/22/1987CCC9/9/19"
+date_val <- unlist(str_extract_all(date_string,"\\d{2}/\\d{2}/\\d{4}"))
+date_val
+
+eq_string <- "<head>Jey</hea>"
+eq_val <- str_extract(eq_string,"<(.+?)>.+?</\\1>")
+eq_val
+
+eq_string <- "<head>Jey</head>"
+eq_val <- str_extract(eq_string,"<(.+?)>.+?</\\1>")
+eq_val
+```
+
+```{r secret_message, eval=TRUE}
+
+input_string <- "clcopCow1zmstc0d87wnkig7OvdicpNuggvhryn92Gjuwczi8hqrfpRxs5Aj5dwpn0TanwoUwisdij7Lj8kpf03AT5Idr3coc0bt7yczjatOaootj55t3Nj3ne6c4Sfek.r1w1YwwojigOd6vrfUrbz2.2bkAnbhzgv4R9i05zEcrop.wAgnb.SqoU65fPa1otfb7wEm24k6t3sR9zqe5fy89n6Nd5t9kc4fE905gmc4Rgxo5nhDk!gr"
+
+numeric_characters <- str_extract_all(input_string,"[[:digit:]]")
+numeric_characters
+
+alpha_characters <- str_extract_all(input_string,"[[:alpha:]]")
+alpha_characters
+
+upper_case_characters <- str_extract_all(input_string,"[[:upper:]]")
+upper_case_characters
+
+```
+
+The secret message is "CONGRATULATIONSYOUAREASUPERNERD"
