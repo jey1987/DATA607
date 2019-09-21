@@ -1,0 +1,156 @@
+---
+title: "Jeyaraman_Ramalingam_Week4_Project"
+author: "Jeyaraman Ramalingam"
+date: "9/21/2019"
+output: 
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r cars, eval=TRUE}
+#Declarations and Libraries
+library(bitops)
+library(plyr)
+library(RCurl)
+library(stringr)
+final_record <- data.frame()
+
+# Read Text File Input 
+
+file_url <- getURL("https://raw.githubusercontent.com/jey1987/DATA607/master/Week4_Assignment/tournamentinfo.txt")
+input_data <- read.csv(text=file_url,sep="|",header = FALSE)
+
+#input_data <- read.csv("C:/tournamentinfo.txt",sep="|",header = FALSE)
+
+# Cleanup of Invalid Data
+
+for (i in 1:nrow(input_data))
+{
+  pos <- grepl("-----",input_data[i,1])
+  if(pos)
+      input_data <- input_data[-c(i),]
+  
+}
+rownames(input_data) <- NULL
+num_rows <- nrow(input_data)
+
+# Parse the file to get values
+
+k=1
+for(i in 3:num_rows)
+{
+  if(i%%2==0)
+  {
+    next
+  }
+  rec_loop = i + 1
+  for(j in i:rec_loop)
+  {
+    if(j%%2!=0)
+    {
+      player_name <- as.character(input_data[j,2])
+      total_points <- as.character(input_data[j,3])
+      opponent_1 <- as.character(str_trim(str_extract(input_data[j,4],"[[:digit:]]{1,}")))
+      opponent_2 <- as.character(str_trim(str_extract(input_data[j,5],"[[:digit:]]{1,}")))
+      opponent_3 <- as.character(str_trim(str_extract(input_data[j,6],"[[:digit:]]{1,}")))
+      opponent_4 <- as.character(str_trim(str_extract(input_data[j,7],"[[:digit:]]{1,}")))
+      opponent_5 <- as.character(str_trim(str_extract(input_data[j,8],"[[:digit:]]{1,}")))
+      opponent_6 <- as.character(str_trim(str_extract(input_data[j,9],"[[:digit:]]{1,}")))
+      opponent_7 <- as.character(str_trim(str_extract(input_data[j,10],"[[:digit:]]{1,}")))
+      opponent_list <- paste(opponent_1,",",opponent_2,",",opponent_3,",",opponent_4,",",opponent_5,",",opponent_6,",",opponent_7)
+    }
+    if(j%%2==0)
+    {
+      State <- as.character(input_data[j,1])
+      spos <- str_locate(input_data[j,2],"R:")
+      epos <- str_locate(input_data[j,2],"->")
+      t <- str_locate(substr(input_data[j,2],spos+3,epos-1),"P")
+      
+      if(is.na(t[1]))
+      {
+        Pre_Rating <- str_trim(as.character(substr(input_data[j,2],spos+3,epos-1)))  
+      }
+      else
+      {
+        Pre_Rating <- str_trim(as.character(substr(substr(input_data[j,2],spos+3,epos-1),1,t-1)))
+      }
+      final_record[k,1] <- player_name
+      final_record[k,2] <- total_points
+      final_record[k,3] <- State
+      final_record[k,4] <- Pre_Rating
+      final_record[k,5] <- opponent_list
+      k=k+1
+    }
+  }
+}
+num_rows_final <- nrow(final_record)
+
+# Parse the file to get Opponent average score
+
+for (i in 1:num_rows_final)
+{
+  opponent_list <- unlist(strsplit(final_record[i,5], split=","))
+  total_opp_Rating = 0
+  for (j in 1:7)
+  {
+    
+    if(is.na(str_trim(opponent_list[j])))
+    {
+      opponent_score = 0
+      next
+    }
+    else
+    {
+     
+      for(k in 3:num_rows)
+      {
+        
+        if(str_trim(input_data[k,1])==str_trim(opponent_list[j]))
+        {
+          spos <- str_locate(input_data[k+1,2],"R:")
+          epos <- str_locate(input_data[k+1,2],"->")
+          t <- str_locate(substr(input_data[k+1,2],spos+3,epos-1),"P")
+          
+          if(is.na(t[1]))
+          {
+            opp_Pre_Rating <- as.numeric(str_trim(as.character(substr(input_data[k+1,2],spos+3,epos-1))))  
+          }
+          else
+          {
+            opp_Pre_Rating <- as.numeric(str_trim(as.character(substr(substr(input_data[k+1,2],spos+3,epos-1),1,t-1))))
+          }
+          
+           
+        }
+      }
+      
+      
+    }
+    total_opp_Rating = total_opp_Rating + opp_Pre_Rating
+    final_record[i,6] = round((total_opp_Rating/7),digits=0)
+  }
+  
+}
+
+names(final_record)[1]="Player Name"
+names(final_record)[2]="Player Slate"
+names(final_record)[3]="Total Number of Points"
+names(final_record)[4]="Player Pre-Rating"
+names(final_record)[5]="Opponent List"
+names(final_record)[6]="Average Chess Rating of Opponents"
+
+final_record <- final_record[,-c(5)]
+
+# Write the CSV file
+
+write.csv(final_record,file="output.csv",row.names = FALSE)
+
+output_csv = read.csv(file="output.csv",sep=",",header=TRUE)
+output_csv
+
+```
