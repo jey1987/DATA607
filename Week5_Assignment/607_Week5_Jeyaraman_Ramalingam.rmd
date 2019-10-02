@@ -2,15 +2,15 @@
 title: "607_Week5_Assignment_Jeyaraman_Ramalingam"
 author: "Jeyaraman Ramalingam"
 date: "9/29/2019"
-output: html_document
+output: 
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, eval=TRUE}
 library(bitops)
-library(plyr)
 library(RCurl)
-library(dplyr)
-library(tidyr)
+library(tidyverse)
 
 ```
 
@@ -31,32 +31,49 @@ input_data <- na.omit(input_data)
 input_data[2,1] <- as.character(input_data[1,1])
 input_data[4,1] <- as.character(input_data[3,1])
 
-names(input_data)[1] <- paste("Origin")
+input_data[,1] <- str_replace_all(input_data[,1], c(" " = "_" , "," = "" ))
+
+names(input_data)[1] <- paste("Airline")
 names(input_data)[2] <- paste("Status")
+
+input_data <- data.frame(gather(input_data, "destination","n",3:7 ),stringsAsFactors = FALSE) 
 
 input_data  
 
 ```
 
-## Aggregating the delayed airline 
+## Prepping data for calculating overall and percity performance
 
-```{r file_analyze, eval=TRUE}
-input_data <- data.frame(filter(gather(input_data, "destination","n",3:7 ),Status == "delayed"),stringsAsFactors = FALSE) 
-
-input_data
-
-
-output_final <- input_data %>%
-  group_by(Origin,Status) %>%
-    summarize(sum_flights = sum(n)) 
-
-output_final
-```
-
-## Displaying the final list who delays the flight frequently
-
-```{r file_result, eval=TRUE}
-output_final <- filter(output_final,sum_flights == min(output_final$sum_flights))  
-output_final
+```{r prep_data, eval=TRUE}
+prep_data <- input_data %>%
+  arrange(Airline,destination) %>%
+  group_by(Airline,destination)%>%
+  mutate(Total_flights_Per_city = sum(n)) %>%
+  mutate(on_time_delay_pct = (n/Total_flights_Per_city)*100) %>%
+  filter(Status == "on time")
+prep_data
 
 ```
+
+## Per City Comparison for Airlines
+
+```{r per_city, eval=TRUE}
+per_city_perf <- prep_data %>%
+  select(destination,Airline,on_time_delay_pct) %>%
+  spread(key = Airline,value = on_time_delay_pct) %>%
+  mutate(diff_pct = ALASKA - AM_WEST) %>%
+  mutate(reliable_airline = if(diff_pct > 0) "ALASKA" else "AM_WEST")
+
+per_city_perf
+```
+
+## Overall Comparison for Airlines
+
+```{r overall_perf, eval=TRUE}
+overall_perf <- prep_data %>%
+    group_by(Airline) %>%
+    summarize(overall_pct = mean(on_time_delay_pct))
+overall_perf
+```
+
+While comparing the two ratings ALASKA airlines is proven to be the most reliable airline but the number of flights plays a major role in determining the most reliable airline. Eventhough ALASKA has operated the flights successfully on major occasion the number of flights run by AM_WEST is more. 
