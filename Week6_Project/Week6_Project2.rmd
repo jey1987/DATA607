@@ -1,0 +1,306 @@
+---
+title: "Week6_Project2"
+author: "Jeyaraman Ramalingam"
+date: "10/8/2019"
+output: html_document
+---
+## Week 6 Project  {.tabset}
+
+### Overview
+
+**Dataset References**
+
+The following datasets were considered for this Project.
+
+**Mecklenburg County Great Schools Report** - Untidy data with most of the values in one column.
+
+[https://www.greatschools.org/north-carolina/charlotte/charlotte_mecklenburg-school-district/schools/?gradeLevels%5B%5D=e&view=table]
+
+**Montgomery Count Crash Report** - Contains Report of crashes across years.
+
+[https://data.montgomerycountymd.gov/Public-Safety/Crash-Reporting-Incidents-Data/bhju-22kf/data]
+
+**AIRBNB NYC Data** - Neighbourhood information of different types of accomodation options.
+
+[https://www.kaggle.com/dgomonov/new-york-city-airbnb-open-data/downloads/AB_NYC_2019.csv/3]
+
+**Approach**
+
+Below is the standard approach followed for all datasets used in this project.
+
+* **Step - 1** Untidy data is analyzed at Source. 
+* **Step - 2** Filter any unnecessary rows such as empty/NULL rows.
+* **Step - 3** Use tidyr packages to transform the datasets to interpret meaningful information.
+* **Step - 4** Use dplyr packages to process strings, transformations etc.
+* **Step - 5** Use ggplot2 package to plot the inference for the Analysis performed in the dataset
+
+### Mecklenburg Schools Report 
+
+Below are different Analysis carried out in the county schools database.
+
+* Analysis 1 - School with More Number of Reviews
+* Analysis 2 - Ratings of Schools in zip code 28210 with number of students
+* Analysis 3 - Zipcode with more number of students
+
+```{r setup,echo=FALSE}
+library(tidyverse)
+library(dplyr)
+library(data.table)
+```
+```{r Meck_Data_Prep,eval=TRUE}
+raw_meck_data <- data.frame(read.csv("https://raw.githubusercontent.com/jey1987/DATA607/master/Week6_Project/Mecklenburg_Elem_Data.csv"))
+raw_meck_data$School <- str_trim(str_replace_all(raw_meck_data$School,"Homes for sale",""))
+raw_meck_data <- raw_meck_data[!apply(is.na(raw_meck_data) | raw_meck_data == "" | raw_meck_data == " ", 1, all),]
+raw_meck_data_split1 <- data.frame(raw_meck_data$School)
+raw_meck_data_split1[,2]=""
+raw_meck_data_split1[,3]=""
+names(raw_meck_data_split1)[1]="val"
+names(raw_meck_data_split1)[2]="attribute"
+names(raw_meck_data_split1)[3]="id"
+i=1
+j=1
+raw_meck_data_split1[1,2]="Date"
+raw_meck_data_split1[2,2]="Rating"
+raw_meck_data_split1[3,2]="School Name"
+raw_meck_data_split1[4,2]="Address"
+
+while(i<=nrow(raw_meck_data_split1))
+{
+  raw_meck_data_split1[i,3]=j
+  if(i%%4==0 & i!=nrow(raw_meck_data_split1))
+  {
+    j=j+1
+    raw_meck_data_split1[i+1,2]="Date"
+    raw_meck_data_split1[i+2,2]="Rating"
+    raw_meck_data_split1[i+3,2]="School Name"
+    raw_meck_data_split1[i+4,2]="Address"
+  }
+  i=i+1
+}
+
+raw_meck_data_split2 <- raw_meck_data[2:7]
+raw_meck_data_split2 <- raw_meck_data_split2[!apply(is.na(raw_meck_data_split2) | raw_meck_data_split2 == "" | raw_meck_data_split2 == " ", 1, all),]
+raw_meck_data_split1 <- spread(raw_meck_data_split1,attribute,val)
+raw_meck_data_final <- data.frame(cbind(raw_meck_data_split1,raw_meck_data_split2[!names(raw_meck_data_split2) %in% names(raw_meck_data_split1)]))
+raw_meck_data_final$id <- seq(1,nrow(raw_meck_data_final))
+
+```
+
+**Analysis 1 - School with More Number of Reviews**
+
+```{r Meck_Analysis_1, eval=TRUE}
+raw_meck_data_plot_reviews <- raw_meck_data_final %>%
+  mutate(no_of_reviews = as.numeric(ifelse(Reviews == "No reviews yet",0,str_extract_all(Reviews,"[[:digit:]]+")))) %>%
+  select(School.Name,no_of_reviews) %>%
+  filter(no_of_reviews > 50) %>%
+  arrange(desc(no_of_reviews)) %>%
+  do(head(.,n=5))
+
+ggplot(raw_meck_data_plot_reviews, aes(x=School.Name, y=no_of_reviews)) +
+geom_bar(stat="identity",fill="#992266") + coord_flip() +  theme_minimal() + theme(axis.line = element_blank(),
+axis.ticks = element_blank(),
+plot.title = element_text(hjust = 0.5, color = "#666666"))
+```
+
+**Analysis 2 - Rating of Schools with Number of Students**
+
+```{r Meck_Analysis_2, eval=TRUE}
+raw_meck_data_plot_no_of_stu_by_Rating <- raw_meck_data_final %>%
+  mutate(no_of_stu = as.numeric(Total.students.enrolled)) %>%
+  mutate(zip_code = as.numeric(str_trim(sapply(str_extract_all(Address,"[[:digit:][:digit:][:digit:][:digit:][:digit:]]+"),tail,1)))) %>%
+  filter(zip_code=="28210") %>%
+  select(School.Name,no_of_stu,Rating) %>%
+  group_by(School.Name,Rating) %>%
+  summarise(total_by_Rating = sum(no_of_stu)) 
+
+ggplot(raw_meck_data_plot_no_of_stu_by_Rating, aes(fill=School.Name, y=total_by_Rating, x=Rating)) + geom_bar( stat="identity", position="fill") 
+```
+
+**Analysis 3 - Number of Students by Zip Code**
+
+```{r Meck_Analysis_3, eval=TRUE}
+raw_meck_data_plot_no_of_stu <- raw_meck_data_final %>%
+  mutate(zip_code = as.numeric(str_trim(sapply(str_extract_all(Address,"[[:digit:][:digit:][:digit:][:digit:][:digit:]]+"),tail,1)))) %>%
+  mutate(no_of_stu = as.numeric(Total.students.enrolled)) %>%
+  select(zip_code,no_of_stu) %>%
+  group_by(zip_code) %>%
+  summarise(total_by_zip = sum(no_of_stu))
+
+ggplot(data=raw_meck_data_plot_no_of_stu, aes(zip_code,total_by_zip))+geom_jitter()
+```
+
+### NYC BNB Report
+
+Below are different Analysis carried out in the NYC BNB Database.
+
+* Analysis 1 - Cheaper and Costlier Neighbourhoods
+* Analysis 2 - Top 10 Neighbourhoods who provide more accomodation 
+* Analysis 3 - Top 10 Host with More reviews
+
+```{r BNB_Prep , eval=TRUE}
+raw_bnb_prep <- data.table(read.csv("https://raw.githubusercontent.com/jey1987/DATA607/master/Week6_Project/AB_NYC_2019.csv")) %>%
+  select(id,host_id,host_name,neighbourhood,room_type,price,number_of_reviews) 
+```
+
+**Analysis 1 - Cheaper and Costlier Neighbourhoods**
+
+```{r BNB_Analysis_1 , eval=TRUE}
+raw_bnb_cheap <- raw_bnb_prep %>%
+  select(neighbourhood,price,room_type) %>%
+  group_by(neighbourhood) %>%
+  summarise(avg_price = round(mean(price))) %>%
+  arrange(avg_price) %>%
+  do(head(.,n=5))
+
+ggplot(raw_bnb_cheap, aes(x="", y=avg_price, fill=neighbourhood)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start=0) +
+  geom_text(aes(label = avg_price), 
+            position = position_stack(vjust = 0.5)) +
+  labs(x = NULL, y = NULL, fill = NULL, 
+       title = "Top 5 Cheaper Neighbourhoods") +
+  guides(fill = guide_legend(reverse = TRUE)) +
+  scale_colour_gradientn(colours=rainbow(5)) +
+  theme_classic() +
+  theme(axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        plot.title = element_text(hjust = 0.5, color = "#666666"))
+
+raw_bnb_costly <- raw_bnb_prep %>%
+  select(neighbourhood,price,id) %>%
+  group_by(neighbourhood) %>%
+  summarise(avg_price = round(mean(price))) %>%
+  arrange(desc(avg_price)) %>%
+  do(head(.,n=5))
+
+ggplot(raw_bnb_costly, aes(x="", y=avg_price, fill=neighbourhood)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start=0) +
+  geom_text(aes(label = avg_price), 
+            position = position_stack(vjust = 0.5)) +
+  labs(x = NULL, y = NULL, fill = NULL, 
+       title = "Top 5 Costlier Neighbourhoods") +
+  guides(fill = guide_legend(reverse = TRUE)) +
+  scale_colour_gradientn(colours=rainbow(5)) +
+  theme_classic() +
+  theme(axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        plot.title = element_text(hjust = 0.5, color = "#666666"))
+
+```
+
+**Analysis 2 - Top 10 Neighbourhoods who provide more accomodation**
+
+```{r BNB_Analysis_2 , eval=TRUE}
+
+raw_bnb_no_of_rooms <- raw_bnb_prep %>%
+  select(neighbourhood,id,room_type) %>%
+  group_by(neighbourhood) %>%
+  summarise(no_of_rooms = n()) %>%
+  arrange(desc(no_of_rooms)) %>%
+  do(head(.,n=10))
+
+
+ggplot(raw_bnb_no_of_rooms, aes(x=neighbourhood, y=no_of_rooms)) +
+geom_bar(stat="identity",fill="#002266") +coord_flip()  +  
+geom_text(aes(label=no_of_rooms), vjust=-0.3, color="Black", size=3.5) + theme_minimal() + theme(axis.line = element_blank(),
+axis.ticks = element_blank(),
+plot.title = element_text(hjust = 0.5, color = "#666666"))
+
+
+
+```
+
+**Analysis 3 - Top 10 Host with More reviews**
+
+```{r BNB_Analysis_3 , eval=TRUE}
+
+raw_bnb_hosts_reviews <- raw_bnb_prep %>%
+  select(host_name,number_of_reviews) %>%
+  group_by(host_name) %>%
+  summarise(no_of_reviews = sum(number_of_reviews)) %>%
+  arrange(desc(no_of_reviews)) %>%
+  do(head(.,n=10))
+
+ggplot(raw_bnb_hosts_reviews, aes(x=host_name, y=no_of_reviews)) +
+geom_bar(stat="identity",fill="#992266") + coord_flip() +  
+geom_text(aes(label=no_of_reviews), vjust=-0.3, color="Black", size=3.5) + theme_minimal() + theme(axis.line = element_blank(),
+axis.ticks = element_blank(),
+plot.title = element_text(hjust = 0.5, color = "#666666"))
+
+```
+
+### Montgomery Count Crash Report
+
+Below are different Analysis carried out in the Montgomery County Crash Database.
+
+* Analysis 1 - Number of Crashses by Year
+* Analysis 2 - Number of Crashses by Mile Point Directions
+* Analysis 3 - Number of Hit and Runs over months in 2019 under different light conditions
+
+```{r crash_prep , eval=TRUE}
+raw_crash_prep <- data.table(read.csv("https://raw.githubusercontent.com/jey1987/DATA607/master/Week6_Project/Crash_Reporting_-_Incidents_Data.csv")) %>%
+  select(Crash.Date.Time,Report.Number,Local.Case.Number,Hit.Run,Mile.Point.Direction,Light,Traffic.Control,Driver.Substance.Abuse) %>%
+  mutate(Crash.Year = format(as.Date(Crash.Date.Time, format="%d/%m/%Y"),"%Y")) %>%
+  mutate(Crash.Month = format(as.Date(Crash.Date.Time, format="%d/%m/%Y"),"%m"))
+
+```
+
+**Analysis 1 - Number of Crashses by Year**
+
+```{r crash_Analysis_1 , eval=TRUE}
+
+raw_crash_by_year <- raw_crash_prep %>%
+  select(Local.Case.Number,Crash.Year) %>%
+  group_by(Crash.Year) %>%
+  summarise(no_by_year = n())
+
+ggplot(raw_crash_by_year, aes(x=Crash.Year, y=no_by_year)) + geom_point() + geom_text(aes(label = no_by_year)) + theme_minimal() + ggtitle("Number of Crashes by Year") 
+
+```
+
+**Analysis 2 - Number of Crashses by Mile Point Directions**
+
+```{r crash_Analysis_2 , eval=TRUE}
+raw_crash_by_mile <- raw_crash_prep %>%
+  select(Local.Case.Number,Mile.Point.Direction) %>%
+  group_by(Mile.Point.Direction) %>%
+  summarise(no_by_mile = n())
+
+
+ggplot(raw_crash_by_mile, aes(x="", y=no_by_mile, fill=Mile.Point.Direction)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start=0) +
+  geom_text(aes(label = no_by_mile), 
+            position = position_stack(vjust = 0.5)) +
+  labs(x = NULL, y = NULL, fill = NULL, 
+       title = "Crashes by Mile Point") +
+  guides(fill = guide_legend(reverse = TRUE)) +
+  scale_colour_gradientn(colours=rainbow(5)) +
+  theme_classic() +
+  theme(axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        plot.title = element_text(hjust = 0.5, color = "#666666")) + ggtitle("Number of Crashes by Mile Point") 
+
+
+
+```
+
+**Analysis 3 - Number of Hit and Runs over months in 2019 under different light conditions**
+
+```{r crash_Analysis_3 , eval=TRUE}
+
+raw_crash_by_hit <- raw_crash_prep %>%
+  select(Local.Case.Number,Hit.Run,Crash.Month,Crash.Year,Light) %>%
+  filter(Hit.Run=="Yes") %>%
+  filter(Crash.Year=="2019") %>%
+  group_by(Crash.Month,Crash.Year,Light) %>%
+  summarise(no_by_hit = n())
+
+ggplot(raw_crash_by_hit, aes(fill=Light, y=no_by_hit, x=Crash.Month)) + geom_bar( stat="identity", position="fill") + theme(axis.text.x = element_text(angle=90)) + xlab("Month") + ylab("Crashes") + ggtitle("Crashes in 2019 by Month and Light Condition") 
+
+
+```
