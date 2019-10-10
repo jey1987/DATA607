@@ -1,0 +1,30 @@
+<?xml version= "1.0"?>
+<favourite_books>
+<book1>
+<book_name> The Lost Symbol
+<Author> Dan Brown </Author>
+<Genre> Fantasy </Genre>
+<Language_Written> English </Language_Written>
+<Copies_Sold>1000000</Copies_Sold>
+<Number_of_Reviews>120</Number_of_Reviews>
+</book_name>
+</book1>
+<book2>
+<book_name> 2 States
+<Author> Chetan Bhagat </Author>
+<Genre> Love </Genre>
+<Language_Written> Hindi </Language_Written>
+<Copies_Sold>12000</Copies_Sold>
+<Number_of_Reviews>90</Number_of_Reviews>
+</book_name>
+</book2>
+<book3>
+<book_name> Thirukkural
+<Author> Thiruvalluvar </Author>
+<Genre> Life Science </Genre>
+<Language_Written> Tamil </Language_Written>
+<Copies_Sold>1000000000</Copies_Sold>
+<Number_of_Reviews>10000</Number_of_Reviews>
+</book_name>
+</book3>
+</favourite_books>

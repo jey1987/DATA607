@@ -1,0 +1,27 @@
+---
+title: "607_Jeyaraman_Ramalingam_Week7"
+author: "Jeyaraman Ramalingam"
+date: "10/9/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(XML)
+library(rjson)
+```
+
+```{r formats, eval=TRUE}
+
+df_JSON <- fromJSON(file="C:/Users/jey19/Desktop/books.json")
+df_XML <- xmlToDataFrame("C:/Users/jey19/Desktop/books.xml")
+df_HTML <- readHTMLTable("C:/Users/jey19/Desktop/books.html")
+
+df_JSON
+
+df_XML
+
+df_HTML
+```
+
+The three dataframes are not identical. HTML and JSON are of type List, XML is of format table. The data retrieved is also different.
