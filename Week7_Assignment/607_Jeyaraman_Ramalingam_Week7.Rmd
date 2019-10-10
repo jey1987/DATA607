@@ -9,13 +9,23 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(XML)
 library(rjson)
+library(RCurl)
+
 ```
 
 ```{r formats, eval=TRUE}
+fileURL <- "https://raw.githubusercontent.com/jey1987/DATA607/master/Week7_Assignment/books.json"
+jsonURL <- getURL(fileURL)
 
-df_JSON <- fromJSON(file="C:/Users/jey19/Desktop/books.json")
-df_XML <- xmlToDataFrame("C:/Users/jey19/Desktop/books.xml")
-df_HTML <- readHTMLTable("C:/Users/jey19/Desktop/books.html")
+fileURL <- "https://raw.githubusercontent.com/jey1987/DATA607/master/Week7_Assignment/books.xml"
+xmlURL <- getURL(fileURL)
+
+fileURL <- "https://raw.githubusercontent.com/jey1987/DATA607/master/Week7_Assignment/books.html"
+htmlURL <- getURL(fileURL)
+
+df_JSON <- fromJSON(jsonURL)
+df_XML <- xmlToDataFrame(xmlURL)
+df_HTML <- readHTMLTable(htmlURL)
 
 df_JSON
 
