@@ -1,0 +1,34 @@
+---
+title: "607_Week9_Jeyaraman_Ramalingam"
+author: "Jeyaraman Ramalingam"
+date: "10/29/2019"
+output: 
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+library(jsonlite)
+```
+
+## JSON - Read Approach
+
+1. Created signin under api nyc website.
+2. Created API Key for myAPP
+3. Authorized Movie Reviews API with the key
+4. Used the URL call and API Key for bringing JSON into R environment
+5. Created and Displayed the dataframe
+
+```{r json_eval, eval=TRUE}
+url <- "https://api.nytimes.com/svc/movies/v2/reviews/picks.json"
+search_string <- "godfather"
+key <- "V3q6edKvlzzQHotsgCC8V77LPZBMcxeY"
+
+final_url <- paste0(url,"?&api-key=",key)
+
+
+review <- fromJSON(final_url)
+review_DF <- data.frame(review)
+review_DF
+
+```
