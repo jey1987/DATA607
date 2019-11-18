@@ -1,0 +1,106 @@
+---
+title: "607_Document_Classification_Jeyaraman_Ramalingam"
+author: "Jeyaraman Ramalingam"
+date: "11/17/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library("stringr")
+library("tm")
+library("SnowballC")
+library("R.utils")
+library("utils")
+library("RTextTools")
+library("Hmisc")
+```
+
+### Cleanup Input Files
+
+```{r input_Spam_Ham, eval=TRUE}
+spam_compress <- 'http://spamassassin.apache.org/old/publiccorpus/20030228_spam_2.tar.bz2'
+
+download.file(spam_compress, destfile="spam_compress_20030228.tar.bz2")
+
+bunzip2("spam_compress_20030228.tar.bz2", remove = FALSE, overwrite = TRUE)
+
+untar("spam_compress_20030228.tar") 
+
+file.remove(list.files(path="spam_2/", full.names=TRUE, recursive=FALSE, pattern="cmds"))
+
+
+ham_compress <- 'http://spamassassin.apache.org/old/publiccorpus/20030228_easy_ham_2.tar.bz2'
+
+download.file(ham_compress, destfile="ham_compress_20030228.tar.bz2")
+
+bunzip2("ham_compress_20030228.tar.bz2", remove = FALSE, overwrite = TRUE)
+
+untar("ham_compress_20030228.tar") 
+
+file.remove(list.files(path="easy_ham_2/", full.names=TRUE, recursive=FALSE, pattern="cmds"))
+
+```
+### Merge Spam and Ham Files
+```{r merge_Files, eval=TRUE}
+spamfiles_Directory<-VCorpus(DirSource(directory = "spam_2/",encoding = "UTF-8"))
+hamfiles_Directory<-VCorpus(DirSource(directory = "easy_ham_2/",encoding = "UTF-8"))
+
+spamfiles_sample <- sample(spamfiles_Directory, 500)
+hamfiles_sample <- sample(hamfiles_Directory, 500)
+
+meta(spamfiles_sample, tag = "type") <- "spam"
+meta(hamfiles_sample, tag = "type") <- "ham"
+
+final_files <- c(spamfiles_sample,hamfiles_sample,recursive=TRUE)
+
+final_sample <- sample(final_files)
+
+final_sample <- tm_map(final_sample,removePunctuation)
+final_sample <- tm_map(final_sample,removeNumbers)
+final_sample <- tm_map(final_sample,stripWhitespace)
+final_sample <- tm_map(final_sample,content_transformer(tolower))
+final_sample <- tm_map(final_sample,removeWords, words = stopwords("en"))
+final_sample <- tm_map(final_sample,stemDocument)
+```
+### Create Document Matrix
+```{r doc_matrix, eval=TRUE}
+d_matrix <- DocumentTermMatrix(final_sample)
+
+d_matrix <- removeSparseTerms(d_matrix, 0.95)
+
+dtm_freq_words <- colSums(as.matrix(d_matrix))
+
+
+meta_spam <- unlist(meta(final_sample)[,1])
+
+model_container <- create_container(d_matrix,labels = meta_spam,trainSize = 1:(0.8*length(meta_spam)),testSize = (0.8*length(meta_spam)+1):length(meta_spam),  virgin = FALSE)
+```
+### Prepare Training and Test Models
+```{r train_test,eval=TRUE}
+training_model_svm <- train_model(model_container, "SVM")
+training_model_rf <- train_model(model_container, "RF")
+training_model_maxent <- train_model(model_container, "MAXENT")
+training_model_tree <- train_model(model_container,"TREE")
+training_model_boosting <- train_model(model_container,"BOOSTING")
+training_model_bagging <- train_model(model_container,"BAGGING")
+
+test_model_svm <- classify_model(model_container, training_model_svm)
+test_model_rf <- classify_model(model_container, training_model_rf)
+test_model_maxent <- classify_model(model_container, training_model_maxent)
+test_model_tree <- classify_model(model_container, training_model_tree)
+test_model_boost <- classify_model(model_container, training_model_boosting)
+test_model_bagging <- classify_model(model_container, training_model_bagging)
+
+```
+### Result of Test Models
+```{r result_test,eval=TRUE }
+describe(test_model_svm)
+describe(test_model_rf)
+describe(test_model_maxent)
+describe(test_model_tree)
+describe(test_model_boost)
+describe(test_model_bagging)
+```
+### Observation
+
+The test produced results with only marginal differences.
