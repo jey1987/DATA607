@@ -1,0 +1,55 @@
+  ---
+title: "607_Week12_NoSQL_Jeyaraman_Ramalingam"
+author: "Jeyaraman Ramalingam"
+date: "11/24/2019"
+output: 
+  html_document:
+    df_print: paged
+---
+## Week 12 Assignment {.tabset .tabset-pills}
+### Initiate Libraries
+```{r setup, include=FALSE}
+library(RMySQL)
+library(mongolite)
+library(kableExtra)
+```
+### Connection to MYSQL
+```{r mysql_Con, eval=TRUE}
+mydb = dbConnect(MySQL(), user='root', password='root', dbname='sys', host='localhost')
+paste("Connection to MySQL Successful")
+joblistings_rs <- dbSendQuery(mydb,"select * from job_listings where trim(title)='DATA SCIENCE CONSULTANT'")
+joblistings = fetch(joblistings_rs,n=-1)
+paste("Fetch Successful")
+kable(joblistings) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+row_spec(0, bold = T, color = "white", background = "#ea7872")
+```
+### Connection to MongoDB
+```{r mongo_Con, eval=TRUE}
+mongodb <- mongo(collection = "indeeddb", db = "indeeddb", url = "mongodb://localhost",verbose = FALSE, options = ssl_options())
+paste("Connection to MongoDB Successful")
+if(mongodb$count() > 0) mongodb$drop()
+mongodb$insert(joblistings,stop_on_error = TRUE)
+paste("Insert Successful")
+```
+### Count Validation MySQL Vs Mongo
+```{r Count_Validation, eval=TRUE}
+stopifnot(mongodb$count() == nrow(joblistings))
+paste("MYSQL Count:",nrow(joblistings))
+paste("MongoDB Count:",mongodb$count())
+```
+### Data Validation MySQL Vs Mongo
+```{r Data_Comparison, eval=TRUE}
+joblistings_mongo <- mongodb$find()
+stopifnot(all.equal(joblistings_mongo, joblistings))
+paste("MongoDB and MYSQL Data Matches 100%")
+
+kable(joblistings_mongo) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+row_spec(0, bold = T, color = "white", background = "#ea7872")
+```
+### Cleanup 
+```{r Cleanup_Conn, eval=TRUE}
+rm(mongodb)
+gc()
+```
