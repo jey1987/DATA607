@@ -35,7 +35,7 @@ This dataset is from kaggle.com and provides insight on the breweries exist acro
 4. Breweries operate across US
 
 ```{r input_brew,eval=TRUE}
-brew_df <- data.table(read.csv("https://github.com/acatlin/FALL2019TIDYVERSE/blob/master/JR_TidyVerse_Assignment/breweries_us.csv",sep = ",", stringsAsFactors = F))
+brew_df <- data.table(read.csv("https://raw.githubusercontent.com/jey1987/DATA607/master/JR_TidyVerse_Assignment/breweries_us.csv",sep = ",", stringsAsFactors = F))
 brew_df
 ```
 
