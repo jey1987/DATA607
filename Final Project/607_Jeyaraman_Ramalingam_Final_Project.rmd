@@ -1,0 +1,426 @@
+---
+title: "607_Jeyaraman_Ramalingam_Final_Project"
+author: "Jeyaraman Ramalingam"
+date: "12/9/2019"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_collapsed: yes
+    toc_float: yes
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/', warning=FALSE)
+```
+
+# Cricket Players Analysis
+
+With the growth in Data Science in the field of Sports, It is essential to study and understand the historical data of Cricket Players. This Analysis helped us to erase some of the myths in the Cricket World. Following are several Insights analyzed and Visualized. 
+
+1. Grounds which are Paradise for the batsman over the Years Tests and ODIs. Batsmen were able to score easily in these grounds. 
+2. Batting Performance Analysis , Further breakdown into below categories. This analysis helps us to understand the difficulty of batting over the years
+    - Batting Average
+    - Centuries Scored
+3. Bowling Performance Analysis , To Understand the variance of bowling performance over years this analysis is performed. Number of Wickets taken is considered as parameter to evaluate the performance of bowlers historically.
+4. Dominating Players in International Cricket - Players who ranked higher by ICC over the years. This snapshot provides the list of players who ranked high every year.
+5. Sachin The World Conqueror - Sachin Tendulkar dominated the world by scoring runs across countries. This snapshot helps us understand the places he scored most and least.
+
+# Data Sources
+
+Below are the data sources used for this Project.
+
+Source Data - Data is primarily sourced from CSV file downloaded from Kaggle. It contains Player's every Innings played in Test and ODI Cricket games.
+
+Reference Data - Rating Information sourced from Wikipedia and Latitude/Longitude Information from Google. CSV files are loaded to MOngoDB and housed in the MongoDB collections. This data is combined with the Source data for analysis and reporting.
+
+# Approach
+
+Traditional approach of Data Science workflow such as Data Ingestion, Data Transformation, Data Analysis and Data Visualization are performed.
+
+# Libraries
+
+Below are the libraries referenced.
+
+viridis
+leaflet
+dplyr
+plotly
+hrbrthemes
+tidyverse
+dplyr
+mongolite
+data.table
+ggplot2
+ggmap
+RColorBrewer
+knitr
+ggplot2
+
+```{r libraries,eval=TRUE,echo=FALSE}
+library(viridis)
+library(leaflet)
+library(dplyr)
+library(plotly)
+library(hrbrthemes)
+library(tidyverse)
+library(dplyr)
+library(mongolite)
+library(data.table)
+library(ggplot2)
+library(ggmap)
+library(RColorBrewer)
+library(knitr)
+library(ggplot2)
+
+```
+
+# Data Ingestion
+
+```{r Data_Ingestion,eval=TRUE}
+#Main Inputs
+
+test_input <- data.table(read.csv("C:/Test Player Innings Stats - All Teams.csv",sep = ",", stringsAsFactors = F))
+odi_input <- data.table(read.csv("C:/ODI Player Innings Stats - All Teams.csv",sep = ",", stringsAsFactors = F))
+bat_Ratings <- data.table(read.csv("C:/batsmen_ratings_all091217.csv",sep = ",", stringsAsFactors = F))
+bowl_Ratings <- data.table(read.csv("C:/bowler_ratings_all091217.csv",sep = ",", stringsAsFactors = F))
+location <- data.table(read.csv("C:/latitude.csv",sep = ",", stringsAsFactors = F))
+
+#Reference Data
+
+mongodb_bat <- mongo(collection = "BatsmanRating", db = "Rating", url = "mongodb://localhost",verbose = FALSE, options = ssl_options())
+mongodb_bowl <- mongo(collection = "BowlerRating", db = "Rating", url = "mongodb://localhost",verbose = FALSE, options = ssl_options())
+mongodb_loc <- mongo(collection = "locationCoord", db = "Country", url = "mongodb://localhost",verbose = FALSE, options = ssl_options())
+
+if(mongodb_bat$count() > 0) mongodb_bat$drop()
+if(mongodb_bowl$count() > 0) mongodb_bowl$drop()
+if(mongodb_loc$count() > 0) mongodb_loc$drop()
+
+mongodb_bat$insert(bat_Ratings,stop_on_error = TRUE)
+mongodb_bowl$insert(bowl_Ratings,stop_on_error = TRUE)
+mongodb_loc$insert(location,stop_on_error = TRUE)
+
+bat_ratings_ds <- mongodb_bat$find()
+bowl_ratings_ds <- mongodb_bowl$find()
+location_ds <- mongodb_loc$find()
+
+bat_ratings_ds <- separate(bat_ratings_ds,rate_date,into=c("rate_year","rate_mon","rate_day"),sep="-")
+bowl_ratings_ds <- separate(bowl_ratings_ds,rate_date,into=c("rate_year","rate_mon","rate_day"),sep="-")
+
+names(bat_ratings_ds)[1] <- paste("Innings.Player")
+names(bowl_ratings_ds)[1] <- paste("Innings.Player")
+
+```
+
+# Data Transformation
+
+```{r Data_Transform,eval=TRUE}
+#Tidy Source Data
+
+# Rename Columns
+names(test_input)[1] <- paste("Innings.Player")
+names(odi_input)[1] <- paste("Innings.Player")
+
+test_input_subset <- test_input %>%
+  select(Innings.Player,Innings.Runs.Scored.Num,Innings.Date,Ground,Innings.Number,X100.s,X50.s,Innings.Minutes.Batted,Innings.Wickets.Taken,Opposition,Country,Innings.Overs.Bowled) %>%
+  mutate(Cricket_type = "Test") %>%
+  mutate_if(is.character, str_trim) 
+
+test_input_subset[is.na(test_input_subset)] = 0
+
+test_input_subset$Innings.Runs.Scored.Num <- suppressWarnings(as.numeric(test_input_subset$Innings.Runs.Scored.Num))
+test_input_subset$Innings.Minutes.Batted <- suppressWarnings(as.numeric(test_input_subset$Innings.Minutes.Batted))
+
+odi_input_subset <- odi_input %>%
+  select(Innings.Player,Innings.Runs.Scored.Num,Innings.Date,Ground,Innings.Number,X100.s,X50.s,Innings.Minutes.Batted,Innings.Wickets.Taken,Opposition,Country,Innings.Overs.Bowled) %>%
+  mutate(Cricket_type = "ODI") %>%
+  mutate_if(is.character, str_trim) 
+
+odi_input_subset[is.na(odi_input_subset)] = 0
+
+odi_input_subset$Innings.Runs.Scored.Num <- suppressWarnings(as.numeric(odi_input_subset$Innings.Runs.Scored.Num,0))
+
+odi_input_subset$Innings.Minutes.Batted <- suppressWarnings(as.numeric(odi_input_subset$Innings.Minutes.Batted))
+
+names(test_input_subset)[5] <- paste("Centuries")
+names(test_input_subset)[6] <- paste("Half Centuries")
+names(odi_input_subset)[5] <- paste("Centuries")
+names(odi_input_subset)[6] <- paste("Half Centuries")
+
+rm(test_input)
+rm(odi_input)
+
+#Calculate Match Count - Test
+
+test_input_subset_mtch_Cnt <- test_input_subset %>%
+  select(Innings.Player,Innings.Runs.Scored.Num,Innings.Minutes.Batted) %>%
+  filter(Innings.Minutes.Batted != "-" & Innings.Minutes.Batted !=0 ) %>%
+  group_by(Innings.Player) %>%
+  dplyr::summarise(mtch_cnt = n()) 
+
+#Calculate Total Runs - Test
+
+test_input_subset_total_runs <- test_input_subset %>%
+  select(Innings.Player,Innings.Runs.Scored.Num) %>%
+  group_by(Innings.Player) %>%
+  dplyr::summarise(total_runs = sum(Innings.Runs.Scored.Num,na.rm=TRUE)) 
+
+#Calculate Match Count - ODI
+
+odi_input_subset_mtch_Cnt <- odi_input_subset %>%
+  select(Innings.Player,Innings.Runs.Scored.Num,Innings.Minutes.Batted) %>%
+  filter(Innings.Minutes.Batted != "-" & Innings.Minutes.Batted !=0 ) %>%
+  group_by(Innings.Player) %>%
+  dplyr::summarise(mtch_cnt = n()) 
+
+#Calculate Total Runs - ODI
+
+odi_input_subset_total_runs <- odi_input_subset %>%
+  select(Innings.Player,Innings.Runs.Scored.Num) %>%
+  group_by(Innings.Player) %>%
+  dplyr::summarise(total_runs = sum(Innings.Runs.Scored.Num,na.rm=TRUE)) 
+
+test_input_subset <- inner_join(test_input_subset, test_input_subset_mtch_Cnt, by = "Innings.Player")
+test_input_subset <- inner_join(test_input_subset, test_input_subset_total_runs, by = "Innings.Player")
+
+odi_input_subset <- inner_join(odi_input_subset, odi_input_subset_mtch_Cnt, by = "Innings.Player")
+odi_input_subset <- inner_join(odi_input_subset, odi_input_subset_total_runs, by = "Innings.Player")
+
+rm(test_input_subset_mtch_Cnt)
+rm(test_input_subset_total_runs)
+rm(odi_input_subset_mtch_Cnt)
+rm(odi_input_subset_total_runs)
+
+#Calculate Batting Average
+
+test_input_subset <- test_input_subset %>%
+  mutate(batting_average = total_runs/(mtch_cnt) )
+
+odi_input_subset <- odi_input_subset %>%
+  mutate(batting_average = total_runs/(mtch_cnt) )
+
+test_odi_subset <- rbind(test_input_subset,odi_input_subset)
+test_odi_subset <- separate(test_odi_subset,Innings.Date,into=c("year","mon","day"),sep="/")
+
+rm(test_input_subset)
+rm(odi_input_subset)
+
+
+#Tidy Reference Data
+
+bat_ratings_rank <- bat_ratings_ds %>%
+  select(Innings.Player,rank,rate_year,rate_mon) 
+
+bat_ratings_rank <- bat_ratings_rank %>%
+  select(Innings.Player,rank,rate_year,rate_mon)  %>%
+  filter(rank == 1)
+
+bowl_ratings_rank <- bowl_ratings_ds %>%
+  select(Innings.Player,rank,rate_year,rate_mon) 
+
+bowl_ratings_rank <- bowl_ratings_rank %>%
+  select(Innings.Player,rank,rate_year,rate_mon)  %>%
+  filter(rank == 1)
+
+rm(bat_ratings_ds)
+rm(bowl_ratings_ds)
+
+player_ratings <- rbind(bat_ratings_rank,bowl_ratings_rank)
+rm(bat_ratings_rank)
+rm(bowl_ratings_rank)
+
+player_ratings$corrected_name <- str_extract(player_ratings$Innings.Player, " [:alpha:]{2,}")
+test_odi_subset$corrected_name <- str_extract(test_odi_subset$Innings.Player, " [:alpha:]{2,}")
+bat_ratings_rank_player <- inner_join(player_ratings,test_odi_subset,by="corrected_name")
+test_odi_subset$Opposition_corr <- str_replace_all(test_odi_subset$Opposition,"[v]","")
+rm(player_ratings)
+```
+
+# Exploratory Analysis
+
+## Most Runs Scored in Grounds Test and ODI
+
+```{r ground,eval=TRUE,echo=FALSE}
+most_runs_ground_test <- test_odi_subset %>%
+  select(Ground,Cricket_type,total_runs) %>%
+  filter(Cricket_type == "Test") %>%
+  group_by(Ground) %>%
+  dplyr::summarise(total_Runs_gr = sum(total_runs)) %>%
+  arrange(desc(total_Runs_gr)) %>%
+  do(head(.,n=25))
+
+most_runs_ground_odi <- test_odi_subset %>%
+  select(Ground,Cricket_type,total_runs) %>%
+  filter(Cricket_type == "ODI") %>%
+  group_by(Ground) %>%
+  dplyr::summarise(total_Runs_gr = sum(total_runs)) %>%
+  arrange(desc(total_Runs_gr)) %>%
+  do(head(.,n=25))
+```
+```{r plot_ground,eval=TRUE}
+#Most Runs in Grounds
+
+ggplot(most_runs_ground_test, aes(x=Ground, y=total_Runs_gr)) +
+geom_bar(stat="identity",fill=alpha("Red", 0.7) ) + coord_polar(theta = "x") +  theme_minimal() + theme(axis.line = element_blank(),
+axis.ticks = element_blank(),plot.margin = unit(rep(-1,4), "cm") ,
+plot.title = element_text(hjust = 0.5, color = "#6632666")) + theme_light() +   xlab("Ground") +
+  ylab("Total Runs")
+
+
+ggplot(most_runs_ground_odi, aes(x=Ground, y=total_Runs_gr)) +
+geom_bar(stat="identity",fill=alpha("Green", 0.7) ) + coord_polar(theta = "x") +  theme_minimal() + theme(axis.line = element_blank(),
+axis.ticks = element_blank(),plot.margin = unit(rep(-1,4), "cm") ,
+plot.title = element_text(hjust = 0.5, color = "#6632666")) + theme_light()+   xlab("Ground") +
+  ylab("Total Runs")
+```
+
+
+## Batting Performance of Players
+
+### Batting Average
+
+```{r bat_avg,eval=TRUE,echo=FALSE}
+bat_perf_bat_avg <- test_odi_subset %>%
+  select(year,batting_average) %>%
+  group_by(year) %>%
+  filter(year>1981) %>%
+  dplyr::summarise(avg_batting = mean(batting_average,na.rm = TRUE))
+```
+
+```{r plot_bat_avg,eval=TRUE}
+p<-ggplot(bat_perf_bat_avg, aes(x=as.Date(paste0(bat_perf_bat_avg$year,"/01","/01")), y=avg_batting)) +
+  geom_segment( aes(x=as.Date(paste0(bat_perf_bat_avg$year,"/01","/01")), xend=as.Date(paste0(bat_perf_bat_avg$year,"/01","/01")), y=0, yend=avg_batting), color="grey") +
+  geom_point( color="blue", size=4) +
+theme_bw() + theme(axis.line = element_blank(),
+axis.ticks = element_blank(),plot.margin = unit(rep(-1,4), "cm") ,
+plot.title = element_text(hjust = 0.5, color = "#6632666")) +  xlab("Year") +
+  ylab("Batting Average")
+
+ggplotly(p)
+```
+
+
+### Number of Centuries
+
+```{r num_cen,eval=TRUE,echo=FALSE}
+bat_perf_centuries <- test_odi_subset %>%
+  select(year,Centuries) %>%
+  group_by(year) %>%
+  filter(year>1981) %>%
+  dplyr::summarise(avg_centuries = sum(as.numeric(Centuries),na.rm = TRUE))
+```
+```{r plot_centuries,eval=TRUE,echo=FALSE}
+p<-ggplot(bat_perf_centuries, aes(x=as.Date(paste0(bat_perf_centuries$year,"/01","/01")), y=avg_centuries)) +
+  geom_area(fill="#FFFFFF", alpha=0.5) +
+  geom_line(color="#F66304") + ylim(6000,20000) + theme(axis.line = element_blank(),
+axis.ticks = element_blank(),plot.margin = unit(rep(-1,4), "cm") ,
+plot.title = element_text(hjust = 0.5, color = "#6632666")) + xlab("Year")
+  ylab("Centuries") + theme_bw()
+ggplotly(p)
+```
+
+
+# Bowling Performance of Players
+
+```{r bowl_perf,eval=TRUE,echo=FALSE}
+bowl_perf_wickets <- test_odi_subset %>%
+  select(year,Innings.Wickets.Taken) %>%
+  group_by(year) %>%
+  filter(year>1981) %>%
+  dplyr::summarise(total_wickets = sum(as.numeric(Innings.Wickets.Taken),na.rm = TRUE))
+```
+
+```{r plot_bowl,eval=TRUE}
+p<-ggplot(bowl_perf_wickets, aes(x=as.Date(paste0(bowl_perf_wickets$year,"/01","/01")), y=total_wickets)) +
+  geom_area(fill="#FFFFFF", alpha=0.5) +theme(axis.line = element_blank(),
+axis.ticks = element_blank(),plot.margin = unit(rep(-1,4), "cm") ,
+plot.title = element_text(hjust = 0.5, color = "#6632666")) + 
+  geom_line(color="#04F339") + ylim(1000,4000) + xlab("Year")
+  ylab("Minutes Batted") + theme_bw()
+
+ggplotly(p)
+```
+# Player Rank Snapshot
+
+```{r rank_player,eval=TRUE,echo=FALSE}
+# Dominating Player Over Years International Cricket
+
+bat_ratings_rank_player_domin <- bat_ratings_rank_player %>%
+  mutate_if(is.character, str_trim) %>%
+  filter(rate_year > 2000) %>%
+  select(Innings.Player.x,rank,rate_year,rate_mon) %>%
+  distinct(Innings.Player.x,rank,rate_year,rate_mon) %>%
+  group_by(Innings.Player.x,rate_year) %>%
+  dplyr::summarise(number_of_ranking = sum(rank)) %>%
+  group_by(rate_year) %>%
+  mutate(yr_rank = rank(number_of_ranking))%>%
+  group_by(rate_year) %>%
+  arrange(yr_rank) %>%
+  filter(row_number()==1)
+```
+
+```{r plot_rank,eval=TRUE}
+p <- ggplot(bat_ratings_rank_player_domin, aes(x=rate_year, y=Innings.Player.x,size=10,color="#F004F3")) +
+  geom_point(alpha=0.7) +
+  scale_size(range = c(1.4, 20), name="Player with Most ratings") +
+  theme(legend.position="none") + theme_bw()+   xlab("Year") +
+  ylab("Player Name")
+
+pp <- ggplotly(p)
+pp
+```
+
+# Player Runs across World
+
+```{r sachin_world,eval=TRUE,echo=FALSE}
+# Sachin's Runs across world
+
+sachin_scores <- test_odi_subset %>%
+  mutate_if(is.character, str_trim) %>%
+  select(Innings.Player,Opposition_corr,Innings.Runs.Scored.Num) %>%
+  filter(Innings.Player=="SR Tendulkar")%>%
+  group_by(Opposition_corr) %>%
+  dplyr::summarise(total_runs = sum(as.numeric(Innings.Runs.Scored.Num),na.rm = TRUE))
+
+# Lookup Latitude and longitude based on Country
+names(sachin_scores)[1]<-paste("name")
+sachin_scores_loc <- inner_join(sachin_scores,location_ds,by="name")
+
+```
+
+```{r plot_world,eval=TRUE}
+wmap <- borders("world", colour = "black", fill = "gray")
+m<-ggplot() + wmap + 
+  geom_point(data = sachin_scores_loc, aes(x = as.numeric(longitude),y = as.numeric(latitude), colour = total_runs,size=10000))   + ggtitle("Sachin's Runs Across World") +
+  xlab("Longitude") + ylab("Latitude") + scale_size(range = c(0, 25)) +
+  theme(plot.title = element_text(hjust = 0.5)) +theme_minimal()
+
+myPalette <- colorRampPalette(rev(brewer.pal(11, "Spectral")))
+sc1 <- scale_color_gradient2( low="blue", mid="green",
+                              high="red", space ="Lab" )
+m<-m+sc1
+m
+
+```
+
+# Challenges 
+
+1. The Player Names across the Source and Reference data was not same, Some tidying was required to get the clean names out of both Data Source.
+
+2. Joining Player Rating with the actual Players dataframe
+
+# Conclusion
+
+1. Lords Ground in London holds the record for most runs in Test and Sharjah in ODI
+2. Batting Average declines during 2000 but increasing in the late 2010s.
+3. Number of Centuries has increased during 2000s but declining in the late 2010s. 
+4. The above two factors concludes that eventhough individual scores are more the consistency was lacking overall contributing to low average with more centuries.
+5. Bowlers recorded high performance during 2000s matching with the low batting average by taking more wickets.
+6. Snapshot of Ranking depicts that Only two players has retained the ranking in the subsequent year. 
+7. Looking at the World Map it is obvious that Sachin has scored in all parts of Cricket playing countries leaving no place behind.
+
+# References
+
+https://www.kaggle.com/cclayford/cricinfo-statsguru-data
+https://en.wikipedia.org/wiki/ICC_Player_Rankings
+https://developers.google.com/public-data/docs/canonical/countries_csv
